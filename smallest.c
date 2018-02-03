@@ -34,11 +34,11 @@ random_level(void)
 {
 	int level = 1;
 	int r = rand();
-	while (r % 2 && level < MAX_SKIPLIST_HEIGHT)
+	while ((r%2 == 0) && (level < MAX_SKIPLIST_HEIGHT))
 	{
 		level++;
 		r = rand();
-		printf("\nr = %d", r);
+		//printf("\nr = %d", r);
 	}
 	return level;
 }
@@ -82,16 +82,14 @@ insert_node(double *value)
 	/* find biggest element smaller than new value at every level */
 	for (int i = mylist.level; i > 0; i--)
 	{
-		printf("i = %d\n", i);
-		if (curr->next[i] != NULL)
-		{
-			printf("curr->next[i]->value = %lf", curr->next[i]->value);
-			while (curr->next[i]->value < myvalue)
-			{
-				curr = curr->next[i];
-			}
-		}
-		update[i] = curr;
+        while (curr->next[i] != NULL)
+        {
+            if (curr->next[i]->value < myvalue)
+                curr = curr->next[i];
+            else
+                break;
+        }
+        update[i] = curr;
 	}
 
 	/* element just bigger than new value */
@@ -148,8 +146,8 @@ find_smallest95(void)
 
 int main()
 {
-    int input_size = 3;
-    /* keep track of iteration count */
+    int input_size = 6;
+    /* iteration counter */
     int cnt = 0;
     //int input_size = 128000000;
     double a;
@@ -160,18 +158,16 @@ int main()
     for (int i = 0; i < input_size; i++)
     {
         /* read double from stdin */
-        scanf("%lf",&a);
-        printf("Entered %lf\n", a);
-
-		cnt++;
-
-		/* TODO if magnitude of new double is smaller than epsilon's, update epsilon */
+        scanf("%lf\n", &a);
 
         /* add element to skip-list */
         insert_node(&a);
 
         /* find smallest double value bigger than ... */
         //find_smallest95(void)
+
+        /*update iteration counter */
+		cnt++;
     }
 	print_list();
 
