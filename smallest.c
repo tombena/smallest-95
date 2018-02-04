@@ -1,19 +1,12 @@
-#include <math.h>
+#include <float.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
 
-/* TODO describe a skip-list */
-
-/* TODO replace all ints by doubles */
-
-/* TODO create indexable skip-list */
-/* log2(128000000) + 1 */
 #define MAX_SKIPLIST_HEIGHT 29
 
-/* TODO declare skip list globally */
+/* declare skip list globally */
 struct list mylist;
-double epsilon = 1;
 
 struct node
 {
@@ -61,8 +54,7 @@ create_node(double *value)
 	return new_node;
 }
 
-/* TODO replace all 1s by 0s
- */
+/* add node to skip-list */
 static void
 insert_node(double *value)
 {
@@ -70,7 +62,7 @@ insert_node(double *value)
 	struct node *update[MAX_SKIPLIST_HEIGHT];
 
 	struct node *curr = mylist.head;
-	/* add 1st element to skip-list */
+	/* if skip-list is empty, add head */
 	if (curr == NULL)
 	{
 		struct node *new_node = create_node(value);
@@ -84,6 +76,20 @@ insert_node(double *value)
         mylist.size++;
 		return;
 	}
+
+    /* if new node has a value smaller than head value
+     * make it head of the skip-list */
+    if (curr->value > myvalue)
+    {
+        struct node *new_node = create_node(value);
+	    for (int i = mylist.level; i > 0; i--)
+        {
+            new_node->distance[i] = 1;
+            new_node->next[i] = mylist.head;
+        }
+        mylist.head = new_node;
+        return;
+    }
 
 	/* find biggest element smaller than new value at every level */
 	for (int i = mylist.level; i > 0; i--)
@@ -101,8 +107,8 @@ insert_node(double *value)
 	/* element just bigger than new value */
 	curr = curr->next[1];
 
-	int new_level = random_level();
 	/* if new level added to skip-list */
+	int new_level = random_level();
 	if (new_level > mylist.level)
 	{
 		for (int i = mylist.level + 1; i <= new_level; i++)
@@ -116,11 +122,10 @@ insert_node(double *value)
 	struct node *new_node = create_node(value);
     int d_before = 0;
     int d_after = 0;
-    struct node *tmp_before, *tmp_after;
+    struct node *tmp_before;
 	/* add new node to skip-list */
 	for (int i = 1; i <= new_level; i++)
 	{
-
         /* example of skip-list:
          * 4: 3 ---------------------------------------------------> NULL
          * 3: 3 ---------> 5 -----------> (8) ---------------> 11 -> NULL
@@ -133,13 +138,26 @@ insert_node(double *value)
             /* distance to next element on level 1 is always 1 */
             d_before = 1;
         else if (tmp_before != update[i])
+        {
             /* If (8) is added to the skip-list in the following way,
              * distance to (8) can be computed on each level:
              * 1: distance(7, 8) = 1 (direct neighbors)
              * 2: distance(7, 8) = 1 (already known)
              * 3: distance(5, 8) = distance(5, 7) + distance(7, 8)
              */
+
+            /* find distance between update[i] and tmp_before
+             * distance(5,7) in example
+             */
+            struct node *p = update[i]->next[i - 1];
             d_before += update[i]->distance[i - 1];
+
+            while (tmp_before != p)
+            {
+                p = p->next[i - 1];
+                d_before += update[i]->distance[i - 1];
+            }
+        }
         tmp_before = update[i];
 
         /* update distance from new element to next element */
@@ -148,17 +166,16 @@ insert_node(double *value)
             if (i == 1)
                 d_after = 1;
             else
-             /* If (8) is added to the skip-list in the following way,
-             * distance from (8) can be computed on each level:
-             * 1: distance(8, 9)  = 1 (direct neighbors)
-             * 2: distance(8, 10) = distance(8, 9) + distance (9, 10)
-             * 3: distance(8, 11) = distance(8, 10) + distance (10, 11)
-             */
-                d_after += tmp_after->distance[i - 1];
+            {
+                 /* if a node is inserted between A and B then:
+                  * distance(A, B) = d(A, new) + d(new, B) + 1
+                  * thus: update[i]->distance[i] = d_after + d_before + 1
+                  */
+                d_after = update[i]->distance[i] - d_before + 1;
+            }
         }
         else
-            d_after = 0;
-        tmp_after = update[i]->next[i];
+            d_after = 1;
 
 		new_node->next[i] = update[i]->next[i];
         new_node->distance[i] = d_after;
@@ -169,33 +186,39 @@ insert_node(double *value)
     mylist.size++;
 }
 
-/* TODO need to update this function */
+/* find n-th element in skip-list (sorted by ascending order) */
 static double
 search_by_position(int n)
 {
-    if (n >= mylist.size)
-    {
-        printf("Wrong index = %d\n", n);
-        /* TODO limits */
-        return 0.0;
-    }
+    if (n < 0 || n > mylist.size)
+        return DBL_MIN;
+
     struct node *curr = mylist.head;
     int pos = 0;
+    int tmp = 0;
 
     /* note: curr stays at position pos */
-    /* TODO need to figure this out */
     for (int i = mylist.level; i > 0; i--)
     {
-        printf("curr->distance[i] = %d\n", curr->distance[i]);
-        while (pos + curr->distance[i] <= n)
+        while (curr != NULL)
         {
-            pos += curr->distance[i];
-            curr = curr->next[i];
+            if (pos + curr->distance[i] < n)
+            {
+                pos  = pos + curr->distance[i];
+
+                if (curr->next[i] == NULL)
+                    break;
+                else
+                    curr = curr->next[i];
+            }
+            else
+                break;
         }
     }
     return curr->value;
 }
 
+/* can be used for debugging purposes */
 static void
 print_list()
 {
@@ -212,8 +235,7 @@ print_list()
 		}
 	}
 
-
-    printf("\ndistances");
+    printf("\ndistances\n");
     for (int i = mylist.level; i > 0; i--)
 	{
         printf("level = %d\n", i);
@@ -225,17 +247,27 @@ print_list()
 			curr = curr->next[i];
 		}
 	}
+}
 
+static void
+destroy_list(void)
+{
+    struct node *curr = mylist.head;
+    struct node *prev;
 
-
+    while (curr != NULL)
+    {
+        prev = curr;
+        curr = curr->next[1];
+        free(prev);
+    }
 }
 
 int main()
 {
-    int input_size = 7;
     /* iteration counter */
     int cnt = 0;
-    //int input_size = 128000000;
+    int input_size = 128000000;
     double a;
     int index = 0;
 
@@ -245,23 +277,22 @@ int main()
     for (int i = 0; i < input_size; i++)
     {
         /* read double from stdin */
-        scanf("%lf\n", &a);
+        scanf("%lf", &a);
 
         /* add element to skip-list */
-        /* TODO why is last node not added? */
         insert_node(&a);
 
+       /* find index-th element in list
+        * bigger than 95% of elements in list */
+ 		cnt++;
         index = cnt*0.95;
-        //printf("95 percent is index = %d", index);
 
-        /* find index-th element in list */
-        //a = search_by_position(index);
-
-        /*update iteration counter */
-		cnt++;
+        a = search_by_position(index);
+        if (a == DBL_MIN)
+            printf("\nError index too large\n");
+        else
+            printf("\nBiggest element smaller than 95 percent of numbers seen so far = %lf\n", a);
     }
-	print_list();
-    printf("list size = %d\n", mylist.size);
 
-     /* TODO destroy list */
+    destroy_list();
 }
